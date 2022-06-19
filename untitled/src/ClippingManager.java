@@ -1,57 +1,99 @@
+import javax.sound.sampled.Clip;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 public class ClippingManager {
-  private List<String> clippings;
-  private HashMap<String, ArrayList<Clipping>> orderedClippings;
+  private Map<String, List<Clipping>> clippings;
 
   public ClippingManager() {
-    this.clippings = new ArrayList<>();
-    this.orderedClippings = new HashMap<>();
+
+    this.clippings = new HashMap<>();
   }
-  /*
-  * Se puede cambiar mover la lista a variable de entorno, usada solo para leer el archivo y almacenar
-  * el data en un HashMap, como variable de clase.
-  * */
+
   public void getClipsFromFile(String fileRoute) {
+    List<String> clippings = new ArrayList<>();
+
+    //Put the file in a temporary arraylist;
     try {
-      this.clippings = Files.readAllLines(Paths.get(fileRoute));
+      clippings = Files.readAllLines(Paths.get(fileRoute));
     } catch (Exception e) {
       System.out.println("Error reading file :" + e);
     }
 
 
+    for (int i = 0; i < clippings.size(); i = i + 5) {
+      //FIRST LINE: get BookName and Author:
+      String[] parts = clippings.get(i).split("\\(");
+      String author = "";
+      if (parts.length == 3) {
+        author = parts[2];
+      } else {
+        author = parts[1];
 
-  }
+      }
+      author = author.replaceAll("\\)", "");
+      String bookName = parts[0];
+      bookName = bookName.replaceAll("\uFEFF", ""); //This  uFEFF code was messing everything up, removing it solved it.
+      bookName = bookName.trim();
 
-  /*Podriamos crear una clase Clipping, que almacene todos los datos del clip,
-   * incluyendo autor, fecha, el mismo clip. luego almacenar en hashmap usando
-   * el get.bookName como KEY
-   * */
-  public void printClippingsWithStep(int step) {
-    for (int i = 3; i < this.clippings.size(); i = i + step) {
-      if (!this.clippings.get(i).isEmpty()) {
-        System.out.println(this.clippings.get(i));
+
+      //SECOND LINE: get Date and Time:
+      String[] parts2 = clippings.get(i + 1).split(" ");
+      String creationDate = parts2[4].trim();
+      String creationTime = parts2[5].trim();
+
+
+      //FOURTH LINE: get ClippingText:
+      String clippingText = clippings.get(i + 3).trim();
+
+      //Create clipping object with data obtained:
+      Clipping clipping = new Clipping(bookName, author, creationDate, creationTime, clippingText);
+
+
+      if (this.clippings.containsKey(clipping.getBookName())) {
+        this.clippings.get(clipping.getBookName()).add(clipping);
+      } else {
+        List<Clipping> tempList = new ArrayList<>();
+        tempList.add(clipping);
+        this.clippings.putIfAbsent(clipping.getBookName(), tempList);
       }
 
     }
   }
 
-  public void getTitlesOfClippings() {
-
-    /*Por algun motivo esta funcion encuentra un libro duplicado, puede ser debido al japones*/
-    for (int i = 0; i < this.clippings.size(); i = i + 5) {
-      this.orderedClippings.putIfAbsent(this.clippings.get(i).trim(), new ArrayList<>());
+  public void printAllClippings() {
+    System.out.println("Books Found: ");
+    for (String title : this.clippings.keySet()) {
+      System.out.println(title);
+    }
+    System.out.println("=======================");
+    System.out.println("Clipping amount: " + this.clippings.values().size());
+    System.out.println("Printing clips: \n");
+    for (List<Clipping> clips : this.clippings.values()) {
+      for (Clipping clip : clips) {
+        System.out.println("-------------");
+        System.out.println(clip);
+        System.out.println("-------------");
+      }
     }
   }
 
-  public void printTitles() {
-    System.out.println(this.orderedClippings.size() + " found: \n");
-    for (String title : this.orderedClippings.keySet()) {
-      System.out.println(title);
+  public void printOneBookClips(String name) {
+    System.out.println("FOUND: " + this.clippings.get(name).size() + " clippings for " + name);
+    for (Clipping clip : this.clippings.get(name)) {
+      System.out.println("-------------");
+      System.out.println(clip);
+      System.out.println("-------------");
+    }
+  }
+
+  public void displayAvailableClippings() {
+    int index = 1;
+    System.out.println("Found " + this.clippings.keySet().size() + " books with clippings: ");
+    for (String title : this.clippings.keySet()) {
+      System.out.println(index + ".- " + title);
+      index++;
     }
   }
 
